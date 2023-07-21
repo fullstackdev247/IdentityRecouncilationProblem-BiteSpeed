@@ -50,9 +50,9 @@ export class ContactModel{
 
             if(!primaryContact){
                 //If there is no primary contact (should not happen), return an error
-                throw new Error('No Primary contact found');
+                throw new Error('No any primary contact found');
             }
-
+            //Check if any existing contact found, then add to secondary
             const secondaryContacts = contacts.filter(
                 (contact) => contact.linkPrecedence === 'secondary'
             );
