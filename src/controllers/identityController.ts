@@ -6,7 +6,8 @@ export const identityController = async (req: Request, res: Response) => {
   
     try {
       const contactModel = new ContactModel();
-      res.status(200).json();
+      const consolidatedContact = await contactModel.identityAndConsolidate(email, phoneNumber);
+      res.status(200).json({contact: consolidatedContact });
     } catch (error) {
       console.error('Error:', error);
       res.status(500).json({ error: 'Internal Server Error' });

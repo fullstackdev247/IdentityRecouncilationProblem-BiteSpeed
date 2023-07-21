@@ -4,9 +4,11 @@ interface Contact {
     id:number;
     email: string;
     phoneNumber:string;
+    linkedId:number | null;
+    linkPrecedence: 'primary' | 'secondary';
     createdAt:Date;
     updatedAt: Date;
-    deletedAt: Date;
+    deletedAt: Date | null;
 }
 
 export class ContactModel{
@@ -30,4 +32,15 @@ export class ContactModel{
             client.release();
         }
     }
+
+
+    async identityAndConsolidate(email:string | null, phoneNumber:string | null): Promise<any>{
+        //check if the contact is already exists in database with email or phoneNumber
+        const existingContactQuery = await this.query(
+            'SELECT * FROM "Contact" WHERE email = $1 OR phoneNumber = $2', 
+            [email, phoneNumber] 
+        );
+
+    }
+
 }
