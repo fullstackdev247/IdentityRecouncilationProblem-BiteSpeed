@@ -1,4 +1,4 @@
-import {Pool, QueryResult} from 'pg';
+import { createPool, Pool, PoolConnection, QueryResult } from 'mysql';
 
 //Database Schema for Contact Model
 interface Contact {
@@ -18,14 +18,14 @@ export class ContactModel{
     //Added DB Credentials logic   
     constructor(){
         this.pool = new Pool({
-            user: 'db_user',
-            host: 'db_host',
-            database: 'db_name',
-            password:'db_password',
-            port:5432,
+            user: 'root',
+            host: 'root@localhost',
+            database: 'API',
+            password:'',
+            port:3306,
         });
     }
-    //Query to PostgreSQL Database 
+    //Query to Mysql Database 
     async query(text:string, values:any[]): Promise<QueryResult<any>>{
         const client = await this.pool.connect();
         try {
@@ -36,7 +36,7 @@ export class ContactModel{
     }
 
     //Identity Recouncillation logic for contactModel
-    async identityAndConsolidate(email:string | null, phoneNumber:string | null): Promise<any>{
+    async identifyAndConsolidate(email:string | null, phoneNumber:string | null): Promise<any>{
         //check if the contact is already exists in database with email or phoneNumber
         const existingContactQuery = await this.query(
             'SELECT * FROM "Contact" WHERE email = $1 OR phoneNumber = $2', 
@@ -46,7 +46,7 @@ export class ContactModel{
         //If there a match found, consolidate the contacts
         if(existingContactQuery.rows.length>0){
             const contacts: Contact[] = existingContactQuery.rows;
-            const primaryContact = contacts.find((contact) => contact.linkPrecedence);
+            const primaryContact = contacts.find((contact) => contact.linkPrecedence === 'primary');
 
             if(!primaryContact){
                 //If there is no primary contact (should not happen), return an error
