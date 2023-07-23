@@ -1,4 +1,4 @@
-import { createPool, Pool, PoolConnection, QueryResult } from 'mysql';
+import { createPool, Pool, PoolConnection } from 'mysql';
 
 //Database Schema for Contact Model
 interface Contact {
@@ -17,35 +17,46 @@ export class ContactModel{
  
     //Added DB Credentials logic   
     constructor(){
-        this.pool = new Pool({
+        this.pool =  createPool({
+            connectionLimit: 10,
             user: 'root',
-            host: 'root@localhost',
-            database: 'API',
+            host: 'localhost',
+            database: 'api',
             password:'',
-            port:3306,
         });
     }
     //Query to Mysql Database 
-    async query(text:string, values:any[]): Promise<QueryResult<any>>{
-        const client = await this.pool.connect();
-        try {
-            return await client.query(text, values);
-        } finally {
-            client.release();
-        }
-    }
+    async query<T>(sql: string, values?: any[]): Promise<T> {
+        return new Promise((resolve, reject) => {
+          this.pool.getConnection((err: any, connection: PoolConnection) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+    //Connection Result Query to MySQL
+            connection.query(sql, values, (err: any, results: T) => {
+              connection.release();
+              if (err) {
+                reject(err);
+                return;
+              }
+              resolve(results);
+            });
+          });
+        });
+      }
 
     //Identity Recouncillation logic for contactModel
     async identifyAndConsolidate(email:string | null, phoneNumber:string | null): Promise<any>{
         //check if the contact is already exists in database with email or phoneNumber
-        const existingContactQuery = await this.query(
-            'SELECT * FROM "Contact" WHERE email = $1 OR phoneNumber = $2', 
+        const existingContactQuery = await this.query<any[]>(
+            'SELECT * FROM Contact WHERE email = ? OR phoneNumber = ?', 
             [email, phoneNumber] 
         );
 
         //If there a match found, consolidate the contacts
-        if(existingContactQuery.rows.length>0){
-            const contacts: Contact[] = existingContactQuery.rows;
+        if(existingContactQuery.length> 0){
+            const contacts: Contact[] = existingContactQuery;
             const primaryContact = contacts.find((contact) => contact.linkPrecedence === 'primary');
 
             if(!primaryContact){
@@ -65,12 +76,12 @@ export class ContactModel{
             return consolidatedContact;
         } else{
             //If there is no match found, create a new primary contact
-            const newContactQuery = await this.query(
-                'INSERT INTO "Contact" (email, phoneNumber, linkPrecedence) VALUES ($1, $2, $3) RETURNING *',
+            const newContactQuery = await this.query<Contact[]>(
+                'INSERT INTO Contact (email, phoneNumber, linkPrecedence) VALUES (?, ?, ?)',
                 [email, phoneNumber, 'primary']
             );
 
-            const newPrimaryContact = newContactQuery.rows[0];
+            const newPrimaryContact = newContactQuery[0];
             const consolidatedContact = {
                 newPrimaryContactId: newPrimaryContact.id,
                 emails: [newPrimaryContact.email],
